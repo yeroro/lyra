@@ -89,6 +89,14 @@ http_archive(
     ],
 )
 
+# Interfacing with .npz files.
+new_git_repository(
+    name = "cnpy",
+    build_file = "cnpy.BUILD",
+    branch = "master",
+    remote = "https://github.com/rogersce/cnpy.git",
+)
+
 # Google logging
 git_repository(
     name = "com_google_glog",

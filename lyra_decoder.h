@@ -68,6 +68,8 @@ class LyraDecoder : public LyraDecoderInterface {
   /// @return True if the provided packet is a valid Lyra packet.
   bool SetEncodedPacket(absl::Span<const uint8_t> encoded) override;
 
+  bool SetEncodedFeatures(absl::Span<const float> encoded);
+
   /// Decodes audio from the most recently added packet.
   ///
   /// @param num_samples Number of samples to decode. It has to be less than the

@@ -168,6 +168,13 @@ absl::optional<std::vector<uint8_t>> LyraEncoder::Encode(
   return EncodeInternal(audio, true);
 }
 
+absl::optional<std::vector<float>> LyraEncoder::EncodeRaw(
+    const absl::Span<const int16_t> audio) {
+  raw_features_.resize(kNumFeatures);
+  EncodeInternal(audio, true);
+  return raw_features_;
+}
+
 absl::optional<std::vector<uint8_t>> LyraEncoder::EncodeInternal(
     const absl::Span<const int16_t> audio, bool filter_audio) {
   absl::Span<const int16_t> audio_for_encoding = audio;
@@ -255,6 +262,12 @@ absl::optional<std::vector<uint8_t>> LyraEncoder::EncodeInternal(
     }
     std::copy(features.begin(), features.end(),
               concatenated_features.begin() + i * features.size());
+  }
+
+  if (!raw_features_.empty()) {
+    CHECK_EQ(raw_features_.size(), concatenated_features.size());
+    raw_features_ = concatenated_features;
+    return absl::nullopt;
   }
 
   if (num_similar_noise_frames == num_frames_per_packet_) {
