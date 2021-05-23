@@ -46,6 +46,7 @@ ABSL_FLAG(
 int main(int argc, char** argv) {
   absl::SetProgramUsageMessage(argv[0]);
   absl::ParseCommandLine(argc, argv);
+  google::InitGoogleLogging(argv[0]);
 
   const ghc::filesystem::path input_path(absl::GetFlag(FLAGS_input_path));
   const ghc::filesystem::path output_dir(absl::GetFlag(FLAGS_output_dir));
@@ -74,7 +75,7 @@ int main(int argc, char** argv) {
     }
   }
   const auto output_path =
-      ghc::filesystem::path(output_dir) / input_path.stem().concat(".lyra");
+      ghc::filesystem::path(output_dir) / input_path.stem().concat(".npz");
 
   if (!chromemedia::codec::EncodeFile(input_path, output_path,
                                       enable_preprocessing, enable_dtx,
@@ -82,5 +83,6 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Failed to encode " << input_path;
     return -1;
   }
+
   return 0;
 }

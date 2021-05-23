@@ -166,6 +166,14 @@ bool LyraDecoder::SetEncodedPacket(absl::Span<const uint8_t> encoded) {
   return true;
 }
 
+bool LyraDecoder::SetEncodedFeatures(absl::Span<const float> encoded) {
+  generative_model_->AddFeatures({encoded.begin(), encoded.end()});
+  internal_num_samples_available_ =
+      num_frames_per_packet_ * GetNumSamplesPerHop(kInternalSampleRateHz);
+  encoded_packet_set_ = true;
+  return true;
+}
+
 absl::optional<std::vector<int16_t>> LyraDecoder::DecodeSamples(
     int num_samples) {
   const int external_num_samples_available = ConvertNumSamplesBetweenSampleRate(

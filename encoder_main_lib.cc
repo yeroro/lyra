@@ -29,6 +29,7 @@
 #include "absl/time/clock.h"
 #include "absl/time/time.h"
 #include "absl/types/span.h"
+#include "cnpy.h"
 #include "glog/logging.h"
 #include "include/ghc/filesystem.hpp"
 #include "lyra_config.h"
@@ -44,7 +45,7 @@ namespace codec {
 bool EncodeWav(const std::vector<int16_t>& wav_data, int num_channels,
                int sample_rate_hz, bool enable_preprocessing, bool enable_dtx,
                const ghc::filesystem::path& model_path,
-               std::vector<uint8_t>* encoded_features) {
+               std::vector<float>* encoded_raw_features) {
   auto encoder = LyraEncoder::Create(/*sample_rate_hz=*/sample_rate_hz,
                                      /*num_channels=*/num_channels,
                                      /*bitrate=*/kBitrate,
@@ -71,12 +72,13 @@ bool EncodeWav(const std::vector<int16_t>& wav_data, int num_channels,
   const int num_samples_per_packet =
       kNumFramesPerPacket * sample_rate_hz / encoder->frame_rate();
   // Iterate over the wav data until the end of the vector.
+  int i = 0;
   for (int wav_iterator = 0;
        wav_iterator + num_samples_per_packet <= processed_data.size();
        wav_iterator += num_samples_per_packet) {
     // Move audio samples from the large in memory wav file frame by frame to
     // the encoder.
-    auto encoded_or = encoder->Encode(absl::MakeConstSpan(
+    auto encoded_or = encoder->EncodeRaw(absl::MakeConstSpan(
         &processed_data.at(wav_iterator), num_samples_per_packet));
     if (!encoded_or.has_value()) {
       LOG(ERROR) << "Unable to encode features starting at samples at byte "
@@ -86,9 +88,9 @@ bool EncodeWav(const std::vector<int16_t>& wav_data, int num_channels,
 
     // Append the encoded audio frames to the encoded_features accumulator
     // vector.
-    encoded_features->insert(encoded_features->end(),
-                             encoded_or.value().begin(),
-                             encoded_or.value().end());
+    encoded_raw_features->insert(encoded_raw_features->end(),
+                                 encoded_or.value().begin(),
+                                 encoded_or.value().end());
   }
   const auto elapsed = absl::Now() - benchmark_start;
   LOG(INFO) << "Elapsed seconds : " << absl::ToInt64Seconds(elapsed);
@@ -112,26 +114,19 @@ bool EncodeFile(const ghc::filesystem::path& wav_path,
   }
 
   // Keep an accumulator vector of all the encoded features to write to file.
-  std::vector<uint8_t> encoded_features;
+  std::vector<float> encoded_raw_features;
   if (!EncodeWav(read_wav_result->samples, read_wav_result->num_channels,
                  read_wav_result->sample_rate_hz, enable_preprocessing,
-                 enable_dtx, model_path, &encoded_features)) {
+                 enable_dtx, model_path, &encoded_raw_features)) {
     LOG(ERROR) << "Unable to encode features for file " << wav_path;
     return false;
   }
 
-  std::ofstream output_stream(output_path.string(),
-                              std::ios_base::binary | std::ios_base::trunc);
-  if (!output_stream.is_open()) {
-    LOG(ERROR) << "Could not open output file " << output_path;
-    return false;
-  }
-  absl::string_view encoded_data(
-      reinterpret_cast<const char*>(encoded_features.data()),
-      encoded_features.size());
-  std::ostreambuf_iterator<char> output_iterator(output_stream);
-  std::copy(encoded_data.begin(), encoded_data.end(), output_iterator);
+  const size_t num_frames = encoded_raw_features.size() / kNumFeatures;
+  LOG(INFO) << "Encoded " << num_frames << " frames";
 
+  cnpy::npz_save(output_path, "features", encoded_raw_features.data(),
+                 {num_frames, static_cast<size_t>(kNumFeatures)}, "w");
   return true;
 }
 

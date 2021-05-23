@@ -74,6 +74,10 @@ class LyraEncoder : public LyraEncoderInterface {
   absl::optional<std::vector<uint8_t>> Encode(
       const absl::Span<const int16_t> audio) override;
 
+  /// Encodes the audio samples into raw features.
+  absl::optional<std::vector<float>> EncodeRaw(
+      const absl::Span<const int16_t> audio);
+
   /// Getter for the sample rate in Hertz.
   ///
   /// @return Sample rate in Hertz.
@@ -120,6 +124,7 @@ class LyraEncoder : public LyraEncoderInterface {
   const int num_frames_per_packet_;
   const bool enable_dtx_;
   linear_filters::BiquadFilterCascade<float> second_order_sections_filter_;
+  std::vector<float> raw_features_;
   friend class LyraEncoderPeer;
 };
 
