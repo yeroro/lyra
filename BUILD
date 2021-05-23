@@ -1591,3 +1591,13 @@ filegroup(
         "wavegru/*.textproto",
     ]),
 )
+
+load("@bazel_tools//tools/build_defs/pkg:pkg.bzl", "pkg_tar")
+pkg_tar(
+    name = "codec_pkg",
+    srcs = [
+        ":encoder_main",
+        ":decoder_main",
+    ],
+    mode = "0755",
+)
